@@ -1,0 +1,24 @@
+{
+  "name": "quasi_identifiers_finder",
+  "version": "2.0.0",
+  "description": "_Note: this is the 1st version of the library_",
+  "main": "",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mariaangelapellegrino/quasi_identifiers_finder.git"
+  },
+  "author": "Maria Angela Pellegrino",
+  "bugs": {
+    "url": "https://github.com/mariaangelapellegrino/quasi_identifiers_finder/issues"
+  },
+  "homepage": "https://github.com/mariaangelapellegrino/quasi_identifiers_finder#readme",
+  "devDependencies": {
+    "qunit": "^2.6.2"
+  }
+}
