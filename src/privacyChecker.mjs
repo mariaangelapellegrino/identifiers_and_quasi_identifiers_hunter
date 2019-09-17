@@ -126,13 +126,59 @@ export class PrivacyChecker {
         for (let combo in singleton_stats){
             let abs_value = Object.keys(singleton_stats[combo]).length;
             let percentage = Math.round(abs_value/dataset_size*100);
-            column_stats[combo] = {'absolute_value': abs_value,
-                'percentage':percentage
+            column_stats[combo] = {absolute_value: abs_value,
+                percentage:percentage
             }
         }
         console.log(column_stats)
 
-        return column_stats, singleton_stats;
+        let identifiers, percentage, quasi_identifiers = this.get_quasi_identifiers(column_stats);
+
+        console.log(percentage);
+        console.log(quasi_identifiers);
+
+        return column_stats, singleton_stats, identifiers, percentage, quasi_identifiers;
+    }
+
+    get_quasi_identifiers(stats){
+        let max_percentage = -1;
+        let min_size;
+        let quasi_identifiers = [];
+
+        let identifiers = [];
+
+        for(let column_combination in stats){
+            let statistic = stats[column_combination];
+
+            //identifiers management
+            if(statistic.percentage==100){
+                identifiers.push(column_combination);
+            }
+            //quasi identifiers management
+            else if(statistic.percentage>max_percentage){
+                quasi_identifiers = [];
+                quasi_identifiers.push(column_combination);
+                min_size = column_combination.split(",").length;
+                max_percentage = statistic.percentage;
+            }
+            else if(statistic.percentage==max_percentage){
+                let actual_size = column_combination.split(",").length;
+                if(actual_size<min_size){
+                    quasi_identifiers = [];
+                    min_size = actual_size;
+                }
+                else if(actual_size==min_size){
+                    quasi_identifiers.push(column_combination);
+                }
+            }
+        }
+
+        console.log(identifiers);
+        console.log(max_percentage);
+        console.log(quasi_identifiers);
+
+
+        return identifiers, max_percentage, quasi_identifiers;
     }
 
 }//EndClass.
