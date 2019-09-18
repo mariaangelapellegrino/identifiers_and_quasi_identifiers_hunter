@@ -9,8 +9,8 @@ function runTests(datum) {
 
     QUnit.test("Read and Parse CSV", function (assert) {
         assert.notEqual(jsonDataset, null, "Dataset correctly read.");
-        assert.equal(jsonDataset.fields.length, 2, "The dataset has the expected number of columns.");
-        assert.equal(jsonDataset.records.length, 9, "The dataset has the expected number of rows.");
+        assert.equal(jsonDataset.fields.length, 3, "The dataset has the expected number of columns.");
+        assert.equal(jsonDataset.records.length, 12, "The dataset has the expected number of rows.");
     });
 
     QUnit.test("TestPrivacyOfDataset01", function (assert) {
@@ -25,14 +25,14 @@ function runTests(datum) {
 
         let combination_set = privacychecker.get_all_combinations_if_a_set(fieldKeys);
 
-        assert.equal(combination_set.length, 3, "The expected combinations are found..");
+        assert.equal(combination_set.length, 7, "The expected combinations are found..");
 
 
-        let columns_stats = privacychecker.get_dataset_stats(jsonDataset);
+        //let columns_stats = privacychecker.get_dataset_stats(jsonDataset, true);
 
-        let singletons = privacychecker.get_dataset_singletons(jsonDataset);
+        //let singletons = privacychecker.get_dataset_singletons(jsonDataset, true);
 
-        let column_stats, singleton_stats = privacychecker.get_columns_and_singletons_stats(jsonDataset);
+        privacychecker.get_columns_and_singletons_stats_and_quasi_identifies(jsonDataset, true);
 
     });//EndFunction.
 

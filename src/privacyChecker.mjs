@@ -22,7 +22,10 @@ export class PrivacyChecker {
         return results;
     }
 
-    get_column_stats(dataset, columns){
+    get_column_stats(dataset, columns, drop_null_values){
+        if(drop_null_values)
+            dataset = this.drop_null(dataset);
+
         let records = dataset.records;
         let counts = {};
         for(let record of records){
@@ -40,29 +43,38 @@ export class PrivacyChecker {
         return counts;
     }
 
-    get_columns_stats(dataset, columns_combinations){
+    get_columns_stats(dataset, columns_combinations, drop_null_values){
+
+        if(drop_null_values)
+            dataset = this.drop_null(dataset);
 
         let column_stats = {};
 
         for (let combo of columns_combinations){
-            column_stats[combo] = this.get_column_stats(dataset, combo);
+            column_stats[combo] = this.get_column_stats(dataset, combo, false);
         }
 
         return column_stats;
     }
 
-    get_dataset_stats(dataset){
+    get_dataset_stats(dataset, drop_null_values){
+
+        if(drop_null_values)
+            dataset = this.drop_null(dataset);
 
         let fieldKeys = dataset.fields;
         let columns_combinations = this.get_all_combinations_if_a_set(fieldKeys);
 
-        let column_stats =  this.get_columns_stats(dataset, columns_combinations);
+        let column_stats =  this.get_columns_stats(dataset, columns_combinations, false);
         console.log(column_stats)
         return column_stats;
     }
 
-    get_dataset_singletons(dataset){
-        let column_stats = this.get_dataset_stats(dataset);
+    get_dataset_singletons(dataset, drop_null_values){
+        if(drop_null_values)
+            dataset = this.drop_null(dataset);
+
+        let column_stats = this.get_dataset_stats(dataset, false);
         let singletons = this.get_singletons(column_stats);
         console.log(singletons)
         return singletons
@@ -81,10 +93,12 @@ export class PrivacyChecker {
         return singletons;
     }
 
-    get_columns_and_singletons_stats(dataset){
+    get_columns_and_singletons_stats(dataset, drop_null_values){
+        if(drop_null_values)
+            dataset = this.drop_null(dataset);
 
-        let singleton_stats = {};
-        let column_stats = {};
+        let singleton_occurrences = {};
+        let statistics_for_combination = {};
 
         let fieldKeys = dataset.fields;
         let columns_combinations = this.get_all_combinations_if_a_set(fieldKeys);
@@ -93,7 +107,7 @@ export class PrivacyChecker {
         let dataset_size = records.length;
 
 
-        let combo_counts = {};
+        let occurrences_for_combination = {};
         for (let combo of columns_combinations){
             let counts = {};
             for(let record_index in records){
@@ -106,38 +120,59 @@ export class PrivacyChecker {
                 if (!(curr in counts)) {
                     counts[curr] = 1;
 
-                    if (!(combo in singleton_stats)){
-                        singleton_stats[combo] = {};
+                    if (!(combo in singleton_occurrences)){
+                        singleton_occurrences[combo] = {};
                     }
-                    singleton_stats[combo][curr] = record_index;
+                    singleton_occurrences[combo][curr] = record_index;
                 } else {
                     counts[curr] += 1;
 
-                    if(curr in singleton_stats[combo]){
-                        delete singleton_stats[combo][curr]
+                    if(curr in singleton_occurrences[combo]){
+                        delete singleton_occurrences[combo][curr]
                     }
                 }
             }
-            combo_counts[combo] = counts;
+            occurrences_for_combination[combo] = counts;
         }
-        console.log(combo_counts);
-        console.log(singleton_stats)
+        console.log(occurrences_for_combination);
+        console.log(singleton_occurrences)
 
-        for (let combo in singleton_stats){
-            let abs_value = Object.keys(singleton_stats[combo]).length;
+        for (let combo in singleton_occurrences){
+            let abs_value = Object.keys(singleton_occurrences[combo]).length;
             let percentage = Math.round(abs_value/dataset_size*100);
-            column_stats[combo] = {absolute_value: abs_value,
-                percentage:percentage
+            statistics_for_combination[combo] = {singleton_occurrences_absolute_value: abs_value,
+                percentage_of_singletons:percentage,
+                distinct_values:Object.keys(occurrences_for_combination[combo]).length
             }
         }
-        console.log(column_stats)
+        console.log(statistics_for_combination)
 
-        let identifiers, percentage, quasi_identifiers = this.get_quasi_identifiers(column_stats);
+        let temp_to_return = {statistics_for_combination :statistics_for_combination, singleton_occurrences:singleton_occurrences };
+        return temp_to_return;
+    }
 
-        console.log(percentage);
-        console.log(quasi_identifiers);
+    get_columns_and_singletons_stats_and_quasi_identifies(dataset, drop_null_values){
+        if(drop_null_values)
+            dataset = this.drop_null(dataset);
 
-        return column_stats, singleton_stats, identifiers, percentage, quasi_identifiers;
+        console.log(dataset.records)
+
+        let temp = this.get_columns_and_singletons_stats(dataset, false);
+        let statistics_for_combination = temp.statistics_for_combination;
+        let singleton_occurrences = temp.singleton_occurrences;
+
+        let temp_result = this.get_quasi_identifiers(statistics_for_combination);
+        let identifiers = temp_result.identifiers;
+        let percentage = temp_result.percentage_quasi_identifiers;
+        let quasi_identifiers = temp_result.quasi_identifiers;
+
+        let temp_to_return = {statistics_for_combination :statistics_for_combination,
+            singleton_occurrences:singleton_occurrences,
+            identifiers:identifiers,
+            percentage_quasi_identifiers:percentage,
+            quasi_identifiers:quasi_identifiers
+        };
+        return temp_to_return;
     }
 
     get_quasi_identifiers(stats){
@@ -151,15 +186,15 @@ export class PrivacyChecker {
             let statistic = stats[column_combination];
 
             //identifiers management
-            if(statistic.percentage==100){
+            if(statistic.percentage_of_singletons==100){
                 identifiers.push(column_combination);
             }
             //quasi identifiers management
-            else if(statistic.percentage>max_percentage){
+            else if(statistic.percentage_of_singletons>max_percentage){
                 quasi_identifiers = [];
                 quasi_identifiers.push(column_combination);
                 min_size = column_combination.split(",").length;
-                max_percentage = statistic.percentage;
+                max_percentage = statistic.percentage_of_singletons;
             }
             else if(statistic.percentage==max_percentage){
                 let actual_size = column_combination.split(",").length;
@@ -178,7 +213,36 @@ export class PrivacyChecker {
         console.log(quasi_identifiers);
 
 
-        return identifiers, max_percentage, quasi_identifiers;
+        let temp_to_return = {identifiers:identifiers,
+            percentage_quasi_identifiers:max_percentage,
+            quasi_identifiers:quasi_identifiers
+        };
+        return temp_to_return;
+    }
+
+    drop_null(dataset){
+
+        let records_to_remove= [];
+
+        let records = dataset.records;
+        for(let record_index in records){
+            let record = records[record_index];
+            for(let key in record){
+                let value = record[key];
+                if(value === null || typeof value === 'undefined' || value.toLowerCase() == 'null' || value.length == 0){
+                    records_to_remove.push(record_index);
+                    break
+                }
+            }
+
+        }
+
+        for(let record_index of records_to_remove.reverse()){
+            records.splice(record_index,1);
+        }
+
+        dataset.records = records;
+        return dataset;
     }
 
 }//EndClass.

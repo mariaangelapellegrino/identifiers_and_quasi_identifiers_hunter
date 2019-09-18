@@ -32,7 +32,7 @@ function runTests(datum) {
 
         //let singletons = privacychecker.get_dataset_singletons(jsonDataset);
 
-        let column_stats, singleton_stats, identifiers, percentage, quasi_identifiers = privacychecker.get_columns_and_singletons_stats(jsonDataset);
+        privacychecker.get_columns_and_singletons_stats_and_quasi_identifies(jsonDataset);
 
     });//EndFunction.
 
