@@ -1,5 +1,54 @@
+// This script can be called by node by specifying the dataset file as parameter
 
-export class PrivacyChecker {
+// it retrieves the dataset to evaluate
+const args = process.argv.slice(2);
+
+//it reads the dataset to evaluate and starts the evaluation process
+(async () => {
+    try {
+
+        const getCSV = require('get-csv');
+        let datum = await getCSV(args[0]);
+        start_process(datum)
+    } catch(e) {
+        console.log(e);
+    }
+})();
+
+const perf = require('execution-time')();
+const math = require('mathjs');
+
+// it starts the process to identify identifiers and quasi-identifiers and it reports the execution time in seconds
+function start_process(datum){
+    let privacychecker = new PrivacyChecker();
+    perf.start();
+    privacychecker.optimized_columns_and_singletons_stats_and_quasi_identifies(datum)
+    const time_result = perf.stop();
+    console.log("It requires "+ math.round(time_result.time/1000, 2) + " seconds");  // in seconds
+}
+
+//it runs the process to identify id and quasi-indeitifers 10 times and it returns the mean time and the standard deviation.
+function timing(datum){
+    let run_number = 10;
+    let times = [];
+    for(var i=0; i<run_number; i++){
+        let privacychecker = new PrivacyChecker();
+        perf.start();
+        privacychecker.optimized_columns_and_singletons_stats_and_quasi_identifies(datum)
+        const time_result = perf.stop();
+        times.push(time_result.time/1000);  // in seconds
+    }
+
+    let mean_time = math.round(math.sum(times)/10, 2);
+    let std_dev = math.round(math.std(times),2);
+
+    console.log("Number of runs: " + run_number)
+    console.log("Mean time: " + mean_time);
+    console.log("Standard deviation: " + std_dev);
+}
+
+
+class PrivacyChecker {
 
 
     constructor() {
@@ -9,7 +58,6 @@ export class PrivacyChecker {
     *   It detects identifiers and the best quasi-identifier for the given dataset
     *
     *   records: list of record of the dataset
-    *   drop_null: boolean;  if true all the rows which contain at least one null value will be discarded
     *
     *   It returns an object with the following structure:
     *       statistics_for_combination as key and a map as value. The map contains
@@ -30,7 +78,9 @@ export class PrivacyChecker {
      *      distinct_values as key and the number of distinct values that occur in the best quasi-identifier as value
      *
     */
-    optimized_columns_and_singletons_stats_and_quasi_identifies(records, drop_null){
+    optimized_columns_and_singletons_stats_and_quasi_identifies(records){
+
+        let flat = require('array.prototype.flat')
 
         let all_statistics_for_combination = {};
         let all_singleton_occurrences = {};
@@ -58,12 +108,12 @@ export class PrivacyChecker {
             let still_to_check = temp.not_identifiers;
 
             // for all the columns not classified as identifiers, we count the number of singletons
-            temp = this.get_columns_and_singletons_stats(records, still_to_check, drop_null);
+            temp = this.get_columns_and_singletons_stats(records, still_to_check);
             all_statistics_for_combination = {...all_statistics_for_combination, ...temp.statistics_for_combination};
             all_singleton_occurrences = {...all_singleton_occurrences, ...temp.singleton_occurrences};
 
             // all the columns not classified as identifiers will be considered in the next round of evaluation
-            columns_to_check = Array.from(new Set(still_to_check.flat()));
+            columns_to_check = Array.from(new Set(flat(still_to_check, 1)));
         }
 
         //console.log(all_statistics_for_combination)
@@ -245,6 +295,7 @@ export class PrivacyChecker {
     *       identifiers as key and the list of identifiers as value
     *       absolute_value_quasi_identifier as key and the number of singletons detected by inspecting the best quasi-identifier as value
     *       size_sample as key and the size of the columns that correspond to the best quasi-identifier as value
+    *       percentage_quasi_identifiers: percentage of singletons in the best quasi-identifier
     *       quasi_identifiers as key and the combination of columns that corresponds to the best quasi-identifier as value
     *       distinct_values as key and the number of distinct values that occur in the best quasi-identifier as value
     */
@@ -326,3 +377,4 @@ export class PrivacyChecker {
         return records;
     }
 }//EndClass.
+
